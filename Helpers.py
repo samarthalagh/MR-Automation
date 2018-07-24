@@ -1,3 +1,4 @@
+
 #region Import section
 import time
 from selenium import webdriver
@@ -19,6 +20,7 @@ def getLatestPLfilepath(switch):
         list_of_files = glob.iglob('C:\\Users\salagh\\Downloads\\Timecard Detail*.xlsx')
     latest_file = max(list_of_files, key=os.path.getctime)
     return latest_file
+
 def IsLoginSuccessful(driver):
     username = input("Username: ")
     password = getpass("Password: ")
@@ -34,7 +36,67 @@ def IsLoginSuccessful(driver):
     except NoSuchElementException:
         return True
     return False
-# Copy worksheet data to pivot sheet
+
+def Login(driver):
+    loggedIn = False
+    while not loggedIn:
+        loggedIn = IsLoginSuccessful(driver)
+        print("User authenticated: ", loggedIn)# Copy worksheet data to pivot sheet
+
+def ExportTimecards(driver):
+    print("Ready to extract timecards")
+    driver.get("http://coloeabi03.sapient.com:9704/analytics/saw.dll?Dashboard&PortalPath=/shared/People Management/_portal/Utilization and Time Tracking")
+    time.sleep(300)
+    startTime = time.time()
+    driver.execute_script("Download(\'saw.dll?Go&ViewID=d%3adashboard%7ep%3aldqp07kkmo07g1e0%7er%3aksbrn8ffenl8c56p&Action=Download&SearchID=jsft5oqkehr1h55pokje3s40vq&Style=sapient&PortalPath=%2fshared%2fPeople%20Management%2f_portal%2fUtilization%20and%20Time%20Tracking&Page=Timecard%20Detail&ViewState=62eqg9l029ueaedocjv58shmga&ItemName=Timecard%20Detail&path=%2fshared%2fSapient%20Reports%2fPeople%20Management%2fUtilization%20%26%20Time%20Tracking%20Dashboard%2fTimecard%20Detail&Format=excel2007&Extension=.xlsx\');")
+    time.sleep(200)
+    endTime = time.time()
+    latestFile = getLatestPLfilepath('')
+    creationTime = os.path.getctime(latestFile)
+    
+    if creationTime >= startTime and creationTime <= endTime:
+        print("Timecards downloaded successfully")
+
+def ExportExpenses(driver):
+    print("Ready to extract expenses")
+    
+    #region Set query parameters
+    #SetExpenseQuery(driver)
+    #endregion
+    time.sleep(20)
+
+    #Generate report - Click on Apply button
+    driver.find_element_by_id("gobtn").click()
+    # time.sleep(300)
+
+    # startTime = time.time()
+    # driver.execute_script("Download(\'saw.dll?Go&ViewID=d%3adashboard%7ep%3ab72hrkp5man0pqek%7er%3a233omald1f5ace6g&Action=Download&SearchID=oa7qo6s9kbmmeaiopdsaoik2pe&Style=sapient&ViewState=ntihbuucj42ouircngp0brfo4i&ItemName=Profit%20and%20Loss%20Transaction%20Details&path=%2fshared%2fSapient%20Reports%2fFinancials%2fProfit%20and%20Loss%20-%20Preferred%20Currency%2fProfit%20and%20Loss%20Detail%20Level%2fProfit%20and%20Loss%20Transaction%20Details&Format=excel2007&Extension=.xlsx\');")
+    # time.sleep(60)
+    # endTime = time.time()
+    # latestFile = getLatestPLfilepath('e')
+    # creationTime = os.path.getctime(latestFile)
+    
+    # if creationTime >= startTime and creationTime <= endTime:
+    #     print("Expenses downloaded successfully")
+
+def SetExpenseQuery(driver):
+    projNum = '190064;189623;189625;189626;189628;189629;189630;189379;189603;189560;189601'
+    fiscalYr = '2018'
+    fiscalQtr = 'NULL;2018 Q 1;2018 Q 2;2018 Q 3;2018 Q 4'
+    billFlag = 'Y;N'
+    TransType = 'Expenses'
+    currency = 'INR'
+    
+    ids = driver.find_elements_by_css_selector("input[type='text']")
+    
+    driver.find_element_by_id(ids[2]).send_keys(projNum)
+    driver.find_element_by_id(ids[4]).send_keys(fiscalYr)
+    driver.find_element_by_id(ids[5]).send_keys(fiscalQtr)
+    driver.find_element_by_id(ids[9]).send_keys(billFlag)
+    driver.find_element_by_id(ids[10]).send_keys(TransType)
+    driver.find_element_by_id(ids[11]).send_keys('')
+    driver.find_element_by_id(ids[12]).send_keys(currency)
+
 def MoveExpensesData():
     print('Starting copy operation for Expenses')
     
@@ -54,7 +116,8 @@ def MoveExpensesData():
         print('Data sheet removed from destination')
     
     ws2 = wb2.create_sheet('Expenses')
-    print('New Data sheet created in destination. Starting copy operation')
+    print('New Data sheet created in destination.')
+    print('Starting copy operation')
     
     for row in ws1:
         for cell in row:
@@ -97,7 +160,7 @@ def MoveTimesheetData():
     #Correct AH4 (Total Hours - Actual) row number
     ws2.cell(4,34).value = ws2.cell(3,34).value
     ws2.cell(3,34).value = ''
-
+    print("Corrected Total Hours - Actual position")
     # xy = coordinate_from_string('A4') # returns ('A',4)
     #         col = column_index_from_string(xy[0]) # returns 1
     #         row = xy[1]
@@ -115,27 +178,18 @@ def DownloadExcels():
     #endregion
     
     #region Login
-    loggedIn = False
-    while not loggedIn:
-        loggedIn = IsLoginSuccessful(driver)
-        print("User authenticated: ", loggedIn)
+    Login(driver)
     #endregion
 
     #region Export expenses - P&L report
-    print("Ready to extract expenses")
-    time.sleep(30)
-    driver.execute_script("Download(\'saw.dll?Go&ViewID=d%3adashboard%7ep%3ab72hrkp5man0pqek%7er%3a233omald1f5ace6g&Action=Download&SearchID=oa7qo6s9kbmmeaiopdsaoik2pe&Style=sapient&ViewState=ntihbuucj42ouircngp0brfo4i&ItemName=Profit%20and%20Loss%20Transaction%20Details&path=%2fshared%2fSapient%20Reports%2fFinancials%2fProfit%20and%20Loss%20-%20Preferred%20Currency%2fProfit%20and%20Loss%20Detail%20Level%2fProfit%20and%20Loss%20Transaction%20Details&Format=excel2007&Extension=.xlsx\');")
-    time.sleep(60)
-    print("Expenses downloaded successfully")
+    ExportExpenses(driver)
     #endregion
     
     #region Export Timetracking Report
-    print("Ready to extract timecards")
-    driver.get("http://coloeabi03.sapient.com:9704/analytics/saw.dll?Dashboard&PortalPath=/shared/People Management/_portal/Utilization and Time Tracking")
-    time.sleep(30)
-    driver.execute_script("Download(\'saw.dll?Go&ViewID=d%3adashboard%7ep%3aldqp07kkmo07g1e0%7er%3aksbrn8ffenl8c56p&Action=Download&SearchID=jsft5oqkehr1h55pokje3s40vq&Style=sapient&PortalPath=%2fshared%2fPeople%20Management%2f_portal%2fUtilization%20and%20Time%20Tracking&Page=Timecard%20Detail&ViewState=62eqg9l029ueaedocjv58shmga&ItemName=Timecard%20Detail&path=%2fshared%2fSapient%20Reports%2fPeople%20Management%2fUtilization%20%26%20Time%20Tracking%20Dashboard%2fTimecard%20Detail&Format=excel2007&Extension=.xlsx\');")
-    time.sleep(200)
-    print("Timecards downloaded successfully")
+    ExportTimecards(driver)
     # #endregion
     
     driver.quit()
+
+
+
